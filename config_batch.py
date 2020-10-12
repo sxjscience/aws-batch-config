@@ -23,9 +23,10 @@ def basic_configuration():
                 "value": "4"
             }
         ],
-        "linuxParameters": {
-            'sharedMemorySize': 2000
-        }
+        # Issue: https://forums.aws.amazon.com/thread.jspa?messageID=953912
+        # "linuxParameters": {
+        #     'sharedMemorySize': 2000
+        # }
     }
     return ret
 
