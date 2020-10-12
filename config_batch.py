@@ -1,5 +1,6 @@
 import boto3
 import logging
+import pandas as pd
 
 instance_info_mapping = {
     # P2 Instance
@@ -18,7 +19,7 @@ instance_info_mapping = {
     'p3.2xlarge': {'vcpus': 8, 'memory': 59000, 'num_gpu': 1},
     'p3.8xlarge': {'vcpus': 32, 'memory': 240000, 'num_gpu': 4},
     'p3.16xlarge': {'vcpus': 64, 'memory': 485000, 'num_gpu': 8},
-    'p3.24xlarge': {'vcpus': 96, 'memory': 768000, 'num_gpu': 8},
+    'p3.24xlarge': {'vcpus': 96, 'memory': 766000, 'num_gpu': 8},
 
     # C4 Instance
     'c4.2xlarge': {'vcpus': 8, 'memory': 13000, 'num_gpu': 0},
@@ -35,26 +36,31 @@ instance_info_mapping = {
 }
 
 
-def generate_job_definition():
+def generate_job_definition(instance_type):
+    instance_info = instance_info_mapping[instance_type]
+    is_gpu = instance_info['num_gpu'] > 0
+    device_type = 'gpu' if is_gpu else 'cpu'
+    image_tag = 'gluon-nlp-1:gpu-ci-latest' if is_gpu else 'gluon-nlp-1:cpu-ci-latest'
+    image_base = '747303060528.dkr.ecr.us-east-1.amazonaws.com'
     config = dict()
-    name = 'gluon-nlp-g4-12dn'
-    config['jobDefinitionName'] = name
+    config['jobDefinitionName'] = f'gluon-nlp-{instance_type}'
     config['type'] = 'container'
     config['containerProperties'] = {
-        'image': '747303060528.dkr.ecr.us-east-1.amazonaws.com/gluon-nlp-1:gpu-ci-latest',
-        'vcpus': 48,
-        'memory': 180000,
+        'image': image_base + '/' + image_tag,
+        'vcpus': instance_info['vcpus'],
+        'memory': instance_info['memory'],
         'command': ["./gluon_nlp_job.sh",
                     "Ref::SOURCE_REF",
                     "Ref::WORK_DIR",
                     "Ref::COMMAND",
                     "Ref::SAVED_OUTPUT",
                     "Ref::SAVE_PATH",
-                    "Ref::REMOTE"],
+                    "Ref::REMOTE",
+                    device_type],
         "resourceRequirements": [
             {
                 "type": "GPU",
-                "value": "4"
+                "value": f"{instance_type['num_gpu']}"
             }
         ],
         "privileged": True
@@ -67,10 +73,15 @@ def generate_job_definition():
 
 
 client = boto3.client('batch', region_name='us-east-1')
-response = client.register_job_definition(**generate_job_definition())
-print(response)
-if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-    job_name = response['jobDefinitionName']
-    revision = response['revision']
-else:
-    raise RuntimeError("Fail to register the job definition")
+job_definition_info = []
+for instance_type in instance_info_mapping.keys():
+    response = client.register_job_definition(**generate_job_definition(instance_type))
+    print(response)
+    if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+        job_name = response['jobDefinitionName']
+        revision = response['revision']
+        job_definition_info.append((job_name, revision))
+    else:
+        raise RuntimeError("Fail to register the job definition")
+df = pd.DataFrame(job_definition_info, columns=['Name', 'revision'])
+df.to_csv('gluon-nlp-job-definitions.csv')
