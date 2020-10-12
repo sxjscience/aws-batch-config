@@ -60,7 +60,7 @@ def generate_job_definition(instance_type):
         "resourceRequirements": [
             {
                 "type": "GPU",
-                "value": f"{instance_type['num_gpu']}"
+                "value": str(instance_type['num_gpu'])
             }
         ],
         "privileged": True
