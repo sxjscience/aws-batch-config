@@ -42,6 +42,10 @@ def generate_job_definition(instance_type):
     device_type = 'gpu' if is_gpu else 'cpu'
     image_tag = 'gluon-nlp-1:gpu-ci-latest' if is_gpu else 'gluon-nlp-1:cpu-ci-latest'
     image_base = '747303060528.dkr.ecr.us-east-1.amazonaws.com'
+    resource_requirements = [{
+        "type": "GPU",
+        "value": str(instance_info['num_gpu'])
+    }] if is_gpu else None
     config = dict()
     config['jobDefinitionName'] = f'gluon-nlp-{instance_type}'.replace('.', '_')
     config['type'] = 'container'
@@ -57,12 +61,7 @@ def generate_job_definition(instance_type):
                     "Ref::SAVE_PATH",
                     "Ref::REMOTE",
                     device_type],
-        "resourceRequirements": [
-            {
-                "type": "GPU",
-                "value": str(instance_info['num_gpu'])
-            }
-        ],
+        "resourceRequirements": resource_requirements,
         "privileged": True
         # Issue: https://forums.aws.amazon.com/thread.jspa?messageID=953912
         # "linuxParameters": {
