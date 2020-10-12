@@ -69,7 +69,7 @@ def generate_job_definition():
 client = boto3.client('batch', region_name='us-east-1')
 response = client.register_job_definition(**generate_job_definition())
 print(response)
-if response['HTTPStatusCode'] == 200:
+if response['ResponseMetadata']['HTTPStatusCode'] == 200:
     job_name = response['jobDefinitionName']
     revision = response['revision']
 else:
