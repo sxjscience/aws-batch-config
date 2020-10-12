@@ -80,8 +80,8 @@ for instance_type in instance_info_mapping.keys():
     if response['ResponseMetadata']['HTTPStatusCode'] == 200:
         job_name = response['jobDefinitionName']
         revision = response['revision']
-        job_definition_info.append((job_name, revision))
+        job_definition_info.append((instance_type, job_name, revision))
     else:
         raise RuntimeError("Fail to register the job definition")
-df = pd.DataFrame(job_definition_info, columns=['Name', 'revision'])
+df = pd.DataFrame(job_definition_info, columns=['Instance Type', 'Name', 'Revision'])
 df.to_csv('gluon-nlp-job-definitions.csv')
