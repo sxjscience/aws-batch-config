@@ -5,7 +5,7 @@ import logging
 def basic_configuration():
     ret = dict()
     ret['jobDefinitionName'] = 'gluon-nlp-g4-12dn'
-    ret['job_type'] = 'container'
+    ret['type'] = 'container'
     ret['containerProperties'] = {
         'image': '747303060528.dkr.ecr.us-east-1.amazonaws.com/gluon-nlp-1:gpu-ci-latest',
         'vcpus': 48,
