@@ -43,7 +43,7 @@ def generate_job_definition(instance_type):
     image_tag = 'gluon-nlp-1:gpu-ci-latest' if is_gpu else 'gluon-nlp-1:cpu-ci-latest'
     image_base = '747303060528.dkr.ecr.us-east-1.amazonaws.com'
     config = dict()
-    config['jobDefinitionName'] = f'gluon-nlp-{instance_type}'
+    config['jobDefinitionName'] = f'gluon-nlp-{instance_type}'.replace('.', '_')
     config['type'] = 'container'
     config['containerProperties'] = {
         'image': image_base + '/' + image_tag,
