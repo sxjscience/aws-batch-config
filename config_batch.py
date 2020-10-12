@@ -30,6 +30,6 @@ def basic_configuration():
     return ret
 
 
-client = boto3.client('batch', region='us-east-1')
+client = boto3.client('batch', region_name='us-east-1')
 response = client.register_job_definition(**basic_configuration())
 print(response)
