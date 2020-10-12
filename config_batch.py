@@ -45,7 +45,7 @@ def generate_job_definition(instance_type):
     resource_requirements = [{
         "type": "GPU",
         "value": str(instance_info['num_gpu'])
-    }] if is_gpu else None
+    }] if is_gpu else []
     config = dict()
     config['jobDefinitionName'] = f'gluon-nlp-{instance_type}'.replace('.', '_')
     config['type'] = 'container'
