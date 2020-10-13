@@ -1,6 +1,14 @@
 import boto3
 import logging
 import pandas as pd
+import argparse
+
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+required = parser.add_argument_group('required arguments')
+required.add_argument('--project', help='choose the project you want to config', type=str,
+                    choices=['gluon-nlp', 'gluon-cv'], required=True)
+args = parser.parse_args()
+project = args.project
 
 instance_info_mapping = {
     # P2 Instance
@@ -35,21 +43,34 @@ instance_info_mapping = {
     'c5.24xlarge': {'vcpus': 96, 'memory': 190000, 'num_gpu': 0},
 }
 
+image_tag_mapping = {
+    'gluon-nlp-gpu': 'gluon-nlp-1:gpu-ci-latest',
+    'gluon-nlp-cpu': 'gluon-nlp-1:cpu-ci-latest',
+    'gluon-cv-gpu': 'gluon-cv-1:latest',
+    'gluon-cv-cpu': 'gluon-cv-1:cpu-latest',
+}
+
+image_base_mapping = {
+    'gluon-nlp': '747303060528.dkr.ecr.us-east-1.amazonaws.com',
+    'gluon-cv': '985964311364.dkr.ecr.us-east-1.amazonaws.com'
+}
+
 
 def generate_job_definition(instance_type):
     instance_info = instance_info_mapping[instance_type]
     is_gpu = instance_info['num_gpu'] > 0
     device_type = 'gpu' if is_gpu else 'cpu'
-    image_tag = 'gluon-nlp-1:gpu-ci-latest' if is_gpu else 'gluon-nlp-1:cpu-ci-latest'
-    image_base = '747303060528.dkr.ecr.us-east-1.amazonaws.com'
+    image_tag = image_tag_mapping[f'{project}-gpu'] if is_gpu else image_tag_mapping[f'{project}-cpu']
+    image_base = image_base_mapping[f'{project}']
     resource_requirements = [{
         "type": "GPU",
         "value": str(instance_info['num_gpu'])
     }] if is_gpu else []
     config = dict()
-    config['jobDefinitionName'] = f'gluon-nlp-{instance_type}'.replace('.', '_')
+    config['jobDefinitionName'] = f'{project}-{instance_type}'.replace('.', '_')
     config['type'] = 'container'
-    config['containerProperties'] = {
+    if project == 'gluon-nlp':
+        config['containerProperties'] = {
         'image': image_base + '/' + image_tag,
         'vcpus': instance_info['vcpus'],
         'memory': instance_info['memory'],
@@ -62,6 +83,26 @@ def generate_job_definition(instance_type):
                     "Ref::REMOTE",
                     device_type],
         'jobRoleArn': 'arn:aws:iam::747303060528:role/ECSContainerPowerUser',
+        "resourceRequirements": resource_requirements,
+        "privileged": True
+        # Issue: https://forums.aws.amazon.com/thread.jspa?messageID=953912
+        # "linuxParameters": {
+        #     'sharedMemorySize': 2000
+        # }
+    }
+    elif project == 'gluon-cv':
+        config['containerProperties'] = {
+        'image': image_base + '/' + image_tag,
+        'vcpus': instance_info['vcpus'],
+        'memory': instance_info['memory'],
+        'command': ["./gluon_cv_job.sh",
+                    "Ref::SOURCE_REF",
+                    "Ref::WORK_DIR",
+                    "Ref::COMMAND",
+                    "Ref::SAVED_OUTPUT",
+                    "Ref::SAVE_PATH",
+                    "Ref::REMOTE",
+                    device_type],
         "resourceRequirements": resource_requirements,
         "privileged": True
         # Issue: https://forums.aws.amazon.com/thread.jspa?messageID=953912
@@ -84,4 +125,4 @@ for instance_type in instance_info_mapping.keys():
     else:
         raise RuntimeError("Fail to register the job definition")
 df = pd.DataFrame(job_definition_info, columns=['Instance Type', 'Name', 'Revision'])
-df.to_csv('gluon-nlp-job-definitions.csv')
+df.to_csv(f'{project}-job-definitions.csv')
