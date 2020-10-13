@@ -61,6 +61,7 @@ def generate_job_definition(instance_type):
                     "Ref::SAVE_PATH",
                     "Ref::REMOTE",
                     device_type],
+        'jobRoleArn': 'arn:aws:iam::747303060528:role/ECSContainerPowerUser',
         "resourceRequirements": resource_requirements,
         "privileged": True
         # Issue: https://forums.aws.amazon.com/thread.jspa?messageID=953912
