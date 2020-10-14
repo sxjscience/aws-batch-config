@@ -4,11 +4,16 @@ import pandas as pd
 import argparse
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('--deregister', help='do you want to deregister old revisions for each updated definition', 
+                                    action='store_true')
 required = parser.add_argument_group('required arguments')
 required.add_argument('--project', help='choose the project you want to config', type=str,
-                    choices=['gluon-nlp', 'gluon-cv'], required=True)
+                                   choices=['gluon-nlp', 'gluon-cv'], required=True)
 args = parser.parse_args()
 project = args.project
+deregister = args.deregister
+
+client = boto3.client('batch', region_name='us-east-1')
 
 instance_info_mapping = {
     # P2 Instance
@@ -112,8 +117,16 @@ def generate_job_definition(instance_type):
     }
     return config
 
+def deregister_old_revision(job_name, revision):
+    old_definitions = client.describe_job_definitions(jobDefinitionName=job_name, status='ACTIVE')['jobDefinitions']
+    for od in old_definitions:
+        if od['revision'] < revision:
+            rp = client.deregister_job_definition(jobDefinition=f'{job_name}:{od}')
+            if rp['ResponseMetadata']['HTTPStatusCode'] == 200:
+                print(f'Deregistered {job_name}:{od}')
+            else:
+                print(f'Failed to deregister {job_name}:{od}')
 
-client = boto3.client('batch', region_name='us-east-1')
 job_definition_info = []
 for instance_type in instance_info_mapping.keys():
     response = client.register_job_definition(**generate_job_definition(instance_type))
@@ -122,6 +135,8 @@ for instance_type in instance_info_mapping.keys():
         job_name = response['jobDefinitionName']
         revision = response['revision']
         job_definition_info.append((instance_type, job_name, revision))
+        if deregister: 
+            deregister_old_revision(job_name, revision)
     else:
         raise RuntimeError("Fail to register the job definition")
 df = pd.DataFrame(job_definition_info, columns=['Instance Type', 'Name', 'Revision'])
