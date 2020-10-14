@@ -10,6 +10,8 @@ required.add_argument('--project', help='choose the project you want to config',
 args = parser.parse_args()
 project = args.project
 
+client = boto3.client('batch', region_name='us-east-1')
+
 instance_info_mapping = {
     # P2 Instance
     'p2.xlarge': {'vcpus': 4, 'memory': 50000, 'num_gpu': 1},
@@ -122,7 +124,6 @@ def deregister_old_revision(job_name, revision):
             else:
                 print(f'Failed to deregister {job_name}:{od}')
 
-client = boto3.client('batch', region_name='us-east-1')
 job_definition_info = []
 for instance_type in instance_info_mapping.keys():
     response = client.register_job_definition(**generate_job_definition(instance_type))
