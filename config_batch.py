@@ -4,11 +4,14 @@ import pandas as pd
 import argparse
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('--deregister', help='do you want to deregister old revisions for each updated definition', 
+                                    action='store_true')
 required = parser.add_argument_group('required arguments')
 required.add_argument('--project', help='choose the project you want to config', type=str,
-                    choices=['gluon-nlp', 'gluon-cv'], required=True)
+                                   choices=['gluon-nlp', 'gluon-cv'], required=True)
 args = parser.parse_args()
 project = args.project
+deregister = args.deregister
 
 client = boto3.client('batch', region_name='us-east-1')
 
@@ -132,7 +135,8 @@ for instance_type in instance_info_mapping.keys():
         job_name = response['jobDefinitionName']
         revision = response['revision']
         job_definition_info.append((instance_type, job_name, revision))
-        deregister_old_revision(job_name, revision)
+        if deregister: 
+            deregister_old_revision(job_name, revision)
     else:
         raise RuntimeError("Fail to register the job definition")
 df = pd.DataFrame(job_definition_info, columns=['Instance Type', 'Name', 'Revision'])
